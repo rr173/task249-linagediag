@@ -19,7 +19,8 @@ func (s *Store) NextSnapshotVersion(batchID int64) (int, error) {
 	return int(max.Int64) + 1, nil
 }
 
-// CreateSnapshot 登记诊断快照并落库；发布态时会把同批次旧发布快照标记为「替代」。
+// CreateSnapshot 登记诊断快照并落库；发布态时仅把同批次旧的发布快照标记为「替代」，
+// 草稿态快照不受影响，便于后续继续查看。
 func (s *Store) CreateSnapshot(batchID int64, version int, status model.SnapshotStatus, note string) (*model.Snapshot, error) {
 	now := nowUnix()
 	tx, err := s.DB.Begin()
@@ -39,9 +40,9 @@ func (s *Store) CreateSnapshot(batchID int64, version int, status model.Snapshot
 		return nil, err
 	}
 	if status == model.SnapPublished {
-		// 将同一批次此前发布的快照标记为替代。
+		// 将同一批次此前发布的快照标记为替代；草稿态快照保持不动，便于继续查看。
 		if _, err := tx.Exec(
-			`UPDATE snapshots SET status=?, superseded_by=? WHERE batch_id=? AND status<>? AND id<>?`,
+			`UPDATE snapshots SET status=?, superseded_by=? WHERE batch_id=? AND status=? AND id<>?`,
 			model.SnapSuperseded, snapID, batchID, model.SnapPublished, snapID); err != nil {
 			_ = tx.Rollback()
 			return nil, err
