@@ -58,6 +58,9 @@ func (s *Service) AddTransform(batchID, jobID int64, srcTable, srcCol, tgtTable,
 
 // AddJob 登记作业运行（含输入表版本）。
 func (s *Service) AddJob(batchID, outputTableID int64, name, summary string, inputTableIDs []int64) (*model.JobRun, error) {
+	if err := s.Store.AssertBatchMutable(batchID); err != nil {
+		return nil, err
+	}
 	return s.Store.CreateJob(batchID, outputTableID, name, summary, inputTableIDs)
 }
 

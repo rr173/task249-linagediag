@@ -26,4 +26,9 @@ func TestHTTPSnapshotPublicationAndSealedMutation(t *testing.T) {
 	if code != http.StatusConflict {
 		t.Fatalf("sealed mutation: want 409 got %d", code)
 	}
+	// 作业登记同样受封存只读约束：封存后新增作业会导致封存结果与元数据不一致。
+	code, _ = do(t, http.MethodPost, srv.URL+"/api/batches/"+itoa(batchID)+"/jobs", `{"output_table_id":0,"name":"late","summary":"","input_table_ids":[]}`)
+	if code != http.StatusConflict {
+		t.Fatalf("sealed mutation on jobs: want 409 got %d", code)
+	}
 }
