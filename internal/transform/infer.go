@@ -39,9 +39,12 @@ func (svc *Service) InferRenameCandidates(batchID int64, table, oldColumn string
 			})
 		}
 	}
+	// 候选按置信度降序排列，最相似的重命名优先（diagnosis/locate、
+	// service/lineage 的自动修订均取 [0]）。同分时按 NewName 字典序稳定 tie-break，
+	// 保证上游列同时可能改成两个相似名称时给出确定且最相近的优先候选。
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Confidence != out[j].Confidence {
-			return out[i].Confidence < out[j].Confidence
+			return out[i].Confidence > out[j].Confidence
 		}
 		return out[i].NewName < out[j].NewName
 	})
