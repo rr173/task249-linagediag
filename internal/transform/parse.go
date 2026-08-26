@@ -139,25 +139,30 @@ func (svc *Service) inferPassthrough(batchID int64, res *ParseResult) error {
 			}
 			for _, ic := range inCols {
 				for _, oc := range outCols {
-					if ic.Name == oc.Name {
-						// 已存在同名直通边则跳过（避免重复）。
-						if exists, _ := svc.edgeExists(batchID, ic.ID, oc.ID); exists {
-							continue
-						}
-						e := &model.Edge{
-							BatchID:     batchID,
-							SourceColID: ic.ID,
-							TargetColID: oc.ID,
-							TransformID: job.ID, // 借用 job 作为推断来源
-							Status:      model.EdgeInferred,
-							Reason:      "passthrough same-name column",
-						}
-						if _, err := svc.store.CreateEdge(e); err != nil {
-							return err
-						}
-						res.Edges++
-						res.Inferred++
+					if ic.Name != oc.Name {
+						continue
 					}
+					// 同名但类型不兼容时不自动连边，避免把跨类型的列显示成直通血缘。
+					if typeErr := meta.ValidateTransformTypes(ic.DataType, oc.DataType); typeErr != nil {
+						continue
+					}
+					// 已存在同名直通边则跳过（避免重复）。
+					if exists, _ := svc.edgeExists(batchID, ic.ID, oc.ID); exists {
+						continue
+					}
+					e := &model.Edge{
+						BatchID:     batchID,
+						SourceColID: ic.ID,
+						TargetColID: oc.ID,
+						TransformID: job.ID, // 借用 job 作为推断来源
+						Status:      model.EdgeInferred,
+						Reason:      "passthrough same-name column",
+					}
+					if _, err := svc.store.CreateEdge(e); err != nil {
+						return err
+					}
+					res.Edges++
+					res.Inferred++
 				}
 			}
 		}
