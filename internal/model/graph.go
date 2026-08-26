@@ -58,6 +58,9 @@ func (g *DependencyGraph) Downstream(start ColumnRef) []ColumnRef {
 }
 
 // HasCycle 通过三色 DFS 判断全图是否存在环。
+// white=未访问，gray=在当前递归栈上，black=已完全访问。
+// 邻接点处于 gray（仍在递归栈上）即构成回边，说明有环；
+// 邻接点处于 white 才继续深入，black 节点已无环可证，直接跳过。
 func (g *DependencyGraph) HasCycle() bool {
 	const (
 		white = 0
@@ -73,7 +76,7 @@ func (g *DependencyGraph) HasCycle() bool {
 			if color[v] == gray {
 				return true
 			}
-			if color[v] == gray && dfs(v) {
+			if color[v] == white && dfs(v) {
 				return true
 			}
 		}
